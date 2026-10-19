@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% block titulo %}¡Gracias! · Encuesta Turismax{% endblock %}
+{% block contenido %}
+<section class="intro centrado">
+  {% if repetido %}
+  <h1>Ya respondió esta encuesta</h1>
+  <p>Desde este dispositivo ya se envió una respuesta. ¡Gracias por participar!</p>
+  {% else %}
+  <h1>¡Gracias por responder!</h1>
+  <p>Su respuesta quedó registrada. Si conoce a alguien que viaje con frecuencia, puede compartirle este enlace.</p>
+  {% endif %}
+</section>
+{% endblock %}

@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+{% block contenido %}
+<section class="intro">
+  <h1>¿Cómo vive sus viajes?</h1>
+  <p>Queremos saber qué tan informado y acompañado se siente cuando viaja, y qué le gustaría encontrar en una aplicación de viaje. La encuesta es <strong>anónima</strong> y toma unos <strong>5 minutos</strong>.</p>
+</section>
+
+{% if errores %}
+<div class="alerta" role="alert">
+  Hay {{ errores|length }} pregunta{{ 's' if errores|length > 1 }} sin responder o con un error. Están marcadas en rojo.
+</div>
+{% endif %}
+
+<form method="post" action="{{ url_for('enviar') }}" id="encuesta" novalidate>
+  <div class="trampa" aria-hidden="true">
+    <label>No llenar <input type="text" name="sitio_web" tabindex="-1" autocomplete="off"></label>
+  </div>
+
+  {% for sec in secciones %}
+  <fieldset class="seccion" data-seccion="{{ sec.id }}"
+    {% if sec.mostrar_si %}data-depende="{{ sec.mostrar_si[0] }}" data-valor="{{ sec.mostrar_si[1] }}"{% endif %}>
+    <legend><span class="letra">{{ sec.id }}</span> {{ sec.titulo }}</legend>
+
+    {% for p in preguntas if p.sec == sec.id %}
+    {% set marcadas = datos.get(p.col, []) %}
+    <div class="pregunta{% if errores.get(p.col) %} con-error{% endif %}" id="q-{{ p.col }}"
+         data-tipo="{{ p.tipo }}"{% if p.maximo %} data-maximo="{{ p.maximo }}"{% endif %}{% if p.exclusiva %} data-exclusiva="{{ p.exclusiva }}"{% endif %}{% if p.opcional %} data-opcional="1"{% endif %}>
+      <p class="enunciado"><span class="num">{{ p.n }}.</span> {{ p.texto }}{% if p.opcional %} <span class="opc">(opcional)</span>{% endif %}</p>
+      {% if p.ayuda %}<p class="ayuda">{{ p.ayuda }}</p>{% endif %}
+
+      {% if p.tipo == "uno" %}
+        <div class="opciones">
+        {% for o in p.opciones %}
+          <label class="opcion"><input type="radio" name="{{ p.col }}" value="{{ o }}" {% if o in marcadas %}checked{% endif %}><span>{{ o }}</span></label>
+        {% endfor %}
+        </div>
+      {% elif p.tipo == "varios" %}
+        <div class="opciones">
+        {% for o in p.opciones %}
+          <label class="opcion"><input type="checkbox" name="{{ p.col }}" value="{{ o }}" {% if o in marcadas %}checked{% endif %}><span>{{ o }}</span></label>
+        {% endfor %}
+        </div>
+      {% elif p.tipo == "escala" %}
+        <div class="escala">
+          {% for v in ["1","2","3","4","5"] %}
+          <label class="punto"><input type="radio" name="{{ p.col }}" value="{{ v }}" {% if v in marcadas %}checked{% endif %}><span>{{ v }}</span></label>
+          {% endfor %}
+        </div>
+        <div class="extremos"><span>1 = {{ p.extremos[0] }}</span><span>5 = {{ p.extremos[1] }}</span></div>
+      {% elif p.tipo == "texto" %}
+        <textarea name="{{ p.col }}" rows="3" maxlength="1000" placeholder="Escriba aquí (opcional)">{{ marcadas[0] if marcadas }}</textarea>
+      {% endif %}
+
+      <p class="error" aria-live="polite">{{ errores.get(p.col, "") }}</p>
+    </div>
+    {% endfor %}
+  </fieldset>
+  {% endfor %}
+
+  <div class="consentimiento{% if errores.get('consentimiento') %} con-error{% endif %}" id="q-consentimiento">
+    <label class="opcion">
+      <input type="checkbox" name="consentimiento" value="si" {% if datos.get('consentimiento') == 'si' %}checked{% endif %}>
+      <span>Autorizo el uso de mis respuestas, de forma anónima, con fines académicos, conforme a la Ley 1581 de 2012 de protección de datos personales.</span>
+    </label>
+    <p class="error">{{ errores.get("consentimiento", "") }}</p>
+  </div>
+
+  <button type="submit" class="boton">Enviar respuestas</button>
+</form>
+
+<script>
+(function () {
+  const form = document.getElementById("encuesta");
+
+  // Mostrar u ocultar secciones según respuestas (B depende de la 5, D de la 14)
+  function actualizarSecciones() {
+    form.querySelectorAll("fieldset[data-depende]").forEach(fs => {
+      const marcado = form.querySelector(`input[name="${fs.dataset.depende}"]:checked`);
+      fs.hidden = !(marcado && marcado.value === fs.dataset.valor);
+    });
+  }
+
+  // Límite de opciones y opción exclusiva ("Ninguno")
+  function reglasCasillas(e) {
+    const caja = e.target;
+    if (caja.type !== "checkbox") return;
+    const q = caja.closest(".pregunta");
+    if (!q) return;
+    const todas = [...q.querySelectorAll('input[type="checkbox"]')];
+    const excl = q.dataset.exclusiva;
+    if (excl && caja.checked) {
+      if (caja.value === excl) todas.forEach(c => { if (c !== caja) c.checked = false; });
+      else todas.forEach(c => { if (c.value === excl) c.checked = false; });
+    }
+    const max = parseInt(q.dataset.maximo || "0", 10);
+    if (max) {
+      const n = todas.filter(c => c.checked).length;
+      todas.forEach(c => { c.disabled = !c.checked && n >= max; });
+    }
+  }
+
+  function respondida(q) {
+    if (q.dataset.opcional) return true;
+    return q.querySelector("input:checked") !== null;
+  }
+
+  form.addEventListener("change", e => { actualizarSecciones(); reglasCasillas(e); });
+  form.addEventListener("submit", e => {
+    let primera = null;
+    form.querySelectorAll(".pregunta").forEach(q => {
+      const oculta = q.closest("fieldset").hidden;
+      const ok = oculta || respondida(q);
+      q.classList.toggle("con-error", !ok);
+      q.querySelector(".error").textContent = ok ? "" : "Responda esta pregunta.";
+      if (!ok && !primera) primera = q;
+    });
+    const cons = document.getElementById("q-consentimiento");
+    const okCons = form.querySelector('input[name="consentimiento"]').checked;
+    cons.classList.toggle("con-error", !okCons);
+    cons.querySelector(".error").textContent = okCons ? "" : "Debe aceptar para enviar la encuesta.";
+    if (!okCons && !primera) primera = cons;
+    if (primera) { e.preventDefault(); primera.scrollIntoView({ behavior: "smooth", block: "center" }); }
+  });
+
+  actualizarSecciones();
+  form.querySelectorAll('.pregunta[data-maximo] input[type="checkbox"]:checked').forEach(c => reglasCasillas({ target: c }));
+})();
+</script>
+{% endblock %}

@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block titulo %}Resultados · Encuesta Turismax{% endblock %}
+{% block contenido %}
+<section class="intro centrado">
+  <p class="ayuda">Respuestas recibidas</p>
+  <p class="contador">{{ total }}</p>
+  <p>Meta: 30 respuestas{% if total >= 30 %} · <strong>¡meta cumplida!</strong>{% endif %}</p>
+  <a class="boton" href="{{ url_for('excel') }}">Descargar Excel</a>
+</section>
+{% endblock %}

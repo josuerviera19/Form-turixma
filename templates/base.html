@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block titulo %}Encuesta Turismax{% endblock %}</title>
+  <meta name="description" content="Encuesta académica sobre la experiencia de viaje con agencias.">
+  <link rel="stylesheet" href="{{ url_for('static', filename='estilo.css') }}">
+</head>
+<body>
+  <header class="cabecera">
+    <div class="contenedor">
+      <p class="marca">Turismax</p>
+      <p class="sub">Encuesta académica · Ingeniería de Sistemas · Unicomfacauca</p>
+    </div>
+  </header>
+  <main class="contenedor">
+    {% block contenido %}{% endblock %}
+  </main>
+</body>
+</html>
